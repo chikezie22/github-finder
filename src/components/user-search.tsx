@@ -1,13 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { fetchGithubUser } from '../api/github';
 import UserCard from './user-card';
-import { FaClock, FaUser } from 'react-icons/fa';
+
+import RecentSearches from './recent-searches';
 
 const UserSearch = () => {
   const [username, setUsername] = useState('');
   const [submittedUserName, setSubmittedUsername] = useState('');
-  const [recentUsers, setRecentUsers] = useState<string[]>([]);
+  const [recentUsers, setRecentUsers] = useState<string[]>(() => {
+    const stored = localStorage.getItem('recent');
+    return stored ? JSON.parse(stored) : [];
+  });
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['users', submittedUserName],
     queryFn: () => fetchGithubUser(submittedUserName),
@@ -24,6 +28,10 @@ const UserSearch = () => {
       return updated.slice(0, 5);
     });
   };
+
+  useEffect(() => {
+    localStorage.setItem('recent', JSON.stringify(recentUsers));
+  }, [recentUsers]);
   return (
     <>
       <form onSubmit={handleSubmit} className="form">
@@ -38,26 +46,13 @@ const UserSearch = () => {
         {isError && <p className="status error">{error.message}</p>}
         {data && <UserCard user={data} />}
         {recentUsers.length > 0 && (
-          <div className="recent-searches">
-            <div className="recent-header">
-              <FaClock />
-              <h3>Recent Searches</h3>
-            </div>
-            <ul>
-              {recentUsers.map((user) => (
-                <li key={user}>
-                  <button
-                    onClick={() => {
-                      setUsername(user);
-                      setSubmittedUsername(user);
-                    }}
-                  >
-                    <FaUser className="user-icon" /> {user}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <RecentSearches
+            users={recentUsers}
+            onSelect={(username) => {
+              setUsername(username);
+              setSubmittedUsername(username);
+            }}
+          />
         )}
       </form>
     </>
